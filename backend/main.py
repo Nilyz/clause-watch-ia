@@ -9,6 +9,7 @@ from app.core.database import engine, Base, get_db
 from app.models.sql_models import AnalysisRecord
 from app.services.vector_store import vector_db
 
+
 # Create database tables (SQLite)
 Base.metadata.create_all(bind=engine)
 
