@@ -3,11 +3,27 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from pydantic import BaseModel
 from typing import List
 from app.services.nlp_engine import nlp_engine
+from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
     title="ClauseWatch AI API",
     description="API for contract analysis using deterministic NLP (BERT-based).",
     version="1.0.0",
+)
+
+# --- CORS CONFIGURATION ---
+origins = [
+    "http://localhost:3000",  
+    "http://127.0.0.1:3000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
@@ -93,3 +109,5 @@ async def analyze_contract(file: UploadFile = File(...)):
         raise HTTPException(
             status_code=500, detail="Internal Server Error processing the PDF."
         )
+
+#uvicorn main:app --reload
