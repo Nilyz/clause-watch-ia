@@ -1,20 +1,26 @@
 import fitz
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
+from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List
 from app.services.nlp_engine import nlp_engine
-from fastapi import FastAPI, UploadFile, File, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+from app.core.database import engine, Base, get_db
+from app.models.sql_models import AnalysisRecord
+from app.services.vector_store import vector_db
+
+# Create database tables (SQLite)
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="ClauseWatch AI API",
-    description="API for contract analysis using deterministic NLP (BERT-based).",
+    description="API for contract analysis using deterministic NLP and Hybrid Persistence.",
     version="1.0.0",
 )
 
 # --- CORS CONFIGURATION ---
 origins = [
-    "http://localhost:3000",  
+    "http://localhost:3000",
     "http://127.0.0.1:3000",
 ]
 
@@ -50,7 +56,6 @@ def extract_text_from_pdf(file_content: bytes) -> List[str]:
 
     for page in doc:
         text = page.get_text("text")
-
         raw_paras = text.split("\n\n")
         for p in raw_paras:
             clean_text = p.strip()
@@ -67,7 +72,10 @@ def health_check():
 
 
 @app.post("/api/v1/analyze", response_model=ContractAnalysisResponse)
-async def analyze_contract(file: UploadFile = File(...)):
+async def analyze_contract(
+    file: UploadFile = File(...), db: Session = Depends(get_db)  # Inject SQL Session
+):
+    # 1. Validation
     if not file.filename.endswith(".pdf"):
         raise HTTPException(
             status_code=400, detail="Invalid file type. Only PDF allowed."
@@ -75,14 +83,13 @@ async def analyze_contract(file: UploadFile = File(...)):
 
     try:
         content = await file.read()
-
         paragraphs = extract_text_from_pdf(content)
 
-        # Analyze each paragraph with BERT
+        # Analyze with NLP Engine
         analyzed_clauses = []
         risky_count = 0
 
-        # Limit to first 50 paragraphs for performance in this demo
+        # Limit to 50 clauses for performance
         for p in paragraphs[:50]:
             result = nlp_engine.analyze_clause(p)
             if result:
@@ -90,12 +97,31 @@ async def analyze_contract(file: UploadFile = File(...)):
                 if result["is_risky"]:
                     risky_count += 1
 
-        # Calculate Risk Score
+        # Calculate Statistics
         total = len(analyzed_clauses)
         risk_score = 0
         if total > 0:
             risk_score = int((risky_count / total) * 100)
 
+        #  PERSISTENCE LAYER
+        db_record = AnalysisRecord(
+            filename=file.filename,
+            risk_score=risk_score,
+            total_clauses=total,
+            risky_clauses=risky_count,
+        )
+        db.add(db_record)
+        db.commit()
+        db.refresh(db_record)
+
+        # PERSISTENCE LAYER B: Vector Store (RAG / Context)
+        try:
+            vector_db.add_contract(file.filename, paragraphs)
+            print(f"Indexation complete for {file.filename}")
+        except Exception as vec_error:
+            print(f"Vector DB Error (Non-blocking): {vec_error}")
+
+        # Return JSON to Frontend
         return ContractAnalysisResponse(
             filename=file.filename,
             risk_score=risk_score,
@@ -106,8 +132,15 @@ async def analyze_contract(file: UploadFile = File(...)):
 
     except Exception as e:
         print(f"Error processing file: {e}")
-        raise HTTPException(
-            status_code=500, detail="Internal Server Error processing the PDF."
-        )
+        raise HTTPException(status_code=500, detail=str(e))
 
-#uvicorn main:app --reload
+
+@app.get("/api/v1/history")
+def get_history(db: Session = Depends(get_db)):
+    history = (
+        db.query(AnalysisRecord)
+        .order_by(AnalysisRecord.upload_date.desc())
+        .limit(10)
+        .all()
+    )
+    return history
