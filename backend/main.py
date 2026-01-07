@@ -8,6 +8,7 @@ from app.services.nlp_engine import nlp_engine
 from app.core.database import engine, Base, get_db
 from app.models.sql_models import AnalysisRecord
 from app.services.vector_store import vector_db
+from pydantic import BaseModel
 
 
 # Create database tables (SQLite)
@@ -49,7 +50,15 @@ class ContractAnalysisResponse(BaseModel):
     risky_clauses_count: int
     details: List[ClauseAnalysis]
 
+class SearchQuery(BaseModel):
+    query: str
+    filename: str  
+    top_k: int = 3
 
+class SearchResponse(BaseModel):
+    results: List[dict]
+    
+    
 # --- Helper Functions ---
 def extract_text_from_pdf(file_content: bytes) -> List[str]:
     doc = fitz.open(stream=file_content, filetype="pdf")
@@ -145,3 +154,36 @@ def get_history(db: Session = Depends(get_db)):
         .all()
     )
     return history
+
+
+@app.post("/api/v1/search", response_model=SearchResponse)
+def search_contract(search_data: SearchQuery):
+
+    print(f"Searching for: '{search_data.query}' in file: {search_data.filename}")
+    
+    try:
+        
+        results = vector_db.search_similar(search_data.query, n_results=search_data.top_k)
+        
+        formatted_results = []
+        
+        if results and results['documents']:
+            documents = results['documents'][0]
+            metadatas = results['metadatas'][0]
+            distances = results['distances'][0]
+            
+            for i in range(len(documents)):
+                if search_data.filename and metadatas[i]['filename'] != search_data.filename:
+                    continue
+                    
+                formatted_results.append({
+                    "text": documents[i],
+                    "metadata": metadatas[i],
+                    "similarity_score": 1 - distances[i] 
+                })
+                
+        return SearchResponse(results=formatted_results)
+
+    except Exception as e:
+        print(f"Search Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

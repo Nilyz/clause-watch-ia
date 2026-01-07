@@ -25,18 +25,14 @@ class ContractVectorStore:
             metadatas=metadatas,       
             ids=ids
         )
-        print(f"✅ Vectorized {len(text_paragraphs)} chunks for {filename}")
+        print(f"Vectorized {len(text_paragraphs)} chunks for {filename}")
 
     def search_similar(self, query: str, n_results=3):
-        """
-        Búsqueda semántica pura.
-        Cumple con "Mejorar resultados, asociando palabras o frases" 
-        """
-        results = self.collection.query(
-            query_texts=[query],
-            n_results=n_results
-        )
-        return results
+            results = self.collection.query(
+                query_texts=[query],
+                n_results=n_results
+            )
+            return results
 
 # Singleton instance
 vector_db = ContractVectorStore()
