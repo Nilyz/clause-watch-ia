@@ -7,9 +7,8 @@ class ContractVectorStore:
         self.client = chromadb.PersistentClient(path="./chroma_db")
         
         self.embedding_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
-            model_name="all-MiniLM-L6-v2"
+            model_name="paraphrase-multilingual-MiniLM-L12-v2"
         )
-        
         self.collection = self.client.get_or_create_collection(
             name="contracts_rag",
             embedding_function=self.embedding_fn
@@ -27,12 +26,15 @@ class ContractVectorStore:
         )
         print(f"Vectorized {len(text_paragraphs)} chunks for {filename}")
 
-    def search_similar(self, query: str, n_results=3):
-            results = self.collection.query(
-                query_texts=[query],
-                n_results=n_results
-            )
-            return results
+    def search_similar(self, query: str, filename: str = None, n_results=3):
+        filter_dict = {"filename": filename} if filename else None
+        
+        results = self.collection.query(
+            query_texts=[query],
+            n_results=n_results,
+            where=filter_dict  
+        )
+        return results
 
 # Singleton instance
 vector_db = ContractVectorStore()

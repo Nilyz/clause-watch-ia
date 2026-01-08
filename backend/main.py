@@ -9,6 +9,8 @@ from app.core.database import engine, Base, get_db
 from app.models.sql_models import AnalysisRecord
 from app.services.vector_store import vector_db
 from pydantic import BaseModel
+from deep_translator import GoogleTranslator
+from langdetect import detect
 
 
 # Create database tables (SQLite)
@@ -50,29 +52,48 @@ class ContractAnalysisResponse(BaseModel):
     risky_clauses_count: int
     details: List[ClauseAnalysis]
 
+
 class SearchQuery(BaseModel):
     query: str
-    filename: str  
+    filename: str
     top_k: int = 3
+
 
 class SearchResponse(BaseModel):
     results: List[dict]
-    
-    
+
+
+class SearchQuery(BaseModel):
+    query: str
+    filename: str
+    doc_language: str = "es"
+    top_k: int = 3
+
+
 # --- Helper Functions ---
 def extract_text_from_pdf(file_content: bytes) -> List[str]:
+
     doc = fitz.open(stream=file_content, filetype="pdf")
-    paragraphs = []
+    full_text = ""
 
     for page in doc:
-        text = page.get_text("text")
-        raw_paras = text.split("\n\n")
-        for p in raw_paras:
-            clean_text = p.strip()
-            if len(clean_text) > 20:
-                paragraphs.append(clean_text)
+        full_text += page.get_text("text") + " "
 
-    return paragraphs
+    clean_text = " ".join(full_text.split())
+
+    chunk_size = 500
+    overlap = 50
+    chunks = []
+
+    if len(clean_text) < chunk_size:
+        return [clean_text]
+
+    for i in range(0, len(clean_text), chunk_size - overlap):
+        chunk = clean_text[i : i + chunk_size]
+        if len(chunk) > 50:
+            chunks.append(chunk)
+
+    return chunks
 
 
 # --- Endpoints ---
@@ -158,30 +179,56 @@ def get_history(db: Session = Depends(get_db)):
 
 @app.post("/api/v1/search", response_model=SearchResponse)
 def search_contract(search_data: SearchQuery):
+    """
+    Busca traduciendo la pregunta al idioma del documento si es necesario.
+    """
+    final_query = search_data.query
 
-    print(f"Searching for: '{search_data.query}' in file: {search_data.filename}")
-    
+    # --- LÓGICA DE TRADUCCIÓN (TU IDEA) ---
     try:
-        
-        results = vector_db.search_similar(search_data.query, n_results=search_data.top_k)
-        
+        # 1. Detectar idioma de la pregunta del usuario
+        query_lang = detect(search_data.query)
+
+        #    Normalizamos para traducir SIEMPRE al idioma del documento.
+        if query_lang != search_data.doc_language:
+            print(
+                f"🔄 Traduciendo pregunta de '{query_lang}' a '{search_data.doc_language}'..."
+            )
+
+            translator = GoogleTranslator(
+                source="auto", target=search_data.doc_language
+            )
+            translated_text = translator.translate(search_data.query)
+
+            print(f"   Original: {search_data.query}")
+            print(f"   Traducido: {translated_text}")
+            final_query = translated_text
+
+    except Exception as e:
+        print(f"⚠️ Warning: No se pudo traducir ({e}). Usando query original.")
+    # ----------------------------------------
+
+    print(f"🔎 BUSCANDO: '{final_query}' en archivo: '{search_data.filename}'")
+
+    try:
+        results = vector_db.search_similar(
+            final_query, filename=search_data.filename, n_results=search_data.top_k
+        )
+
         formatted_results = []
-        
-        if results and results['documents']:
-            documents = results['documents'][0]
-            metadatas = results['metadatas'][0]
-            distances = results['distances'][0]
-            
+        if results and results["documents"]:
+            documents = results["documents"][0]
+            metadatas = results["metadatas"][0]
+            distances = results["distances"][0]
             for i in range(len(documents)):
-                if search_data.filename and metadatas[i]['filename'] != search_data.filename:
-                    continue
-                    
-                formatted_results.append({
-                    "text": documents[i],
-                    "metadata": metadatas[i],
-                    "similarity_score": 1 - distances[i] 
-                })
-                
+                formatted_results.append(
+                    {
+                        "text": documents[i],
+                        "metadata": metadatas[i],
+                        "similarity_score": 1 - distances[i],
+                    }
+                )
+
         return SearchResponse(results=formatted_results)
 
     except Exception as e:
