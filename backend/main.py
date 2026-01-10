@@ -38,6 +38,8 @@ app = FastAPI(
 origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://clause-watch-ia.vercel.app",
+    "https://clause-watch-ia.vercel.app/",
 ]
 
 app.add_middleware(
