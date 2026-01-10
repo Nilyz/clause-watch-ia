@@ -15,6 +15,9 @@ import {
     Sparkles,
 } from "lucide-react";
 
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+
 // --- Types ---
 interface ClauseAnalysis {
     text_snippet: string;
@@ -88,7 +91,7 @@ export default function LegalDashboard() {
 
         try {
             const response = await axios.post(
-                "http://127.0.0.1:8000/api/v1/analyze",
+                `${API_URL}/api/v1/analyze`,
                 formData,
                 {
                     headers: { "Content-Type": "multipart/form-data" },
@@ -109,7 +112,7 @@ export default function LegalDashboard() {
 
         try {
             const response = await axios.post(
-                "http://127.0.0.1:8000/api/v1/search",
+                `${API_URL}/api/v1/search`,
                 {
                     query: query,
                     filename: result.filename,
@@ -141,7 +144,7 @@ export default function LegalDashboard() {
 
         try {
             const response = await axios.post(
-                "http://127.0.0.1:8000/api/v1/explain",
+                `${API_URL}/api/v1/explain`,
                 {
                     text: text,
                     query: userQuery,
