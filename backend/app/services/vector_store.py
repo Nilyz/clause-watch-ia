@@ -14,17 +14,30 @@ class ContractVectorStore:
             embedding_function=self.embedding_fn
         )
 
-    def add_contract(self, filename: str, text_paragraphs: list[str]):
 
-        ids = [str(uuid.uuid4()) for _ in text_paragraphs]
-        metadatas = [{"filename": filename, "chunk_index": i} for i in range(len(text_paragraphs))]
+    def add_contract(self, filename: str, chunks_data: list[dict]):
+        
+        if not chunks_data:
+            return
+            
+        texts = [item['text'] for item in chunks_data]
+        
+        ids = [str(uuid.uuid4()) for _ in texts]
+        
+        metadatas = []
+        for i, item in enumerate(chunks_data):
+            meta = {
+                "filename": filename,
+                "chunk_index": i,
+                "page": item.get("page", 1) 
+            }
+            metadatas.append(meta)
         
         self.collection.add(
-            documents=text_paragraphs, 
-            metadatas=metadatas,       
+            documents=texts,
+            metadatas=metadatas,
             ids=ids
         )
-        print(f"Vectorized {len(text_paragraphs)} chunks for {filename}")
 
     def search_similar(self, query: str, filename: str = None, n_results=3):
         filter_dict = {"filename": filename} if filename else None

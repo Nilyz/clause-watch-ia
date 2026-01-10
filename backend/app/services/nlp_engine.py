@@ -36,7 +36,9 @@ class LegalNLPEngine:
         safe_keywords = [
             "horario", "jornada", "fecha", "nombre", "domicilio", 
             "dni", "firmado", "en prueba", "convenio", "trabajador",
-            "vacaciones", "nómina", "seguridad social", "protección de datos"
+            "vacaciones", "nómina", "seguridad social", "protección de datos",
+            "anexo", "contrato", "acuerdo", "estipulaciones", "cláusula", 
+            "firmando", "lugar y fecha", "reunidos"
         ]
 
         if any(k in text_lower for k in risky_keywords):

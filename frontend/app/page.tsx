@@ -1,20 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
-import { Upload, FileText, AlertTriangle, CheckCircle, Loader2, Search, ArrowRight } from "lucide-react";
+import { 
+  Upload, FileText, AlertTriangle, CheckCircle, 
+  Loader2, Search, ArrowRight, X, MessageSquare 
+} from "lucide-react";
 
 // --- Types ---
 interface ClauseAnalysis {
-  text_snippet: string; 
+  text_snippet: string;
   label: string;
   confidence: number;
   is_risky: boolean;
 }
 
 interface AnalysisResult {
-  language: string;
   filename: string;
+  language: string;
   risk_score: number;
   total_clauses_analyzed: number;
   risky_clauses_count: number;
@@ -27,26 +30,37 @@ interface SearchResult {
   metadata: {
     chunk_index: number;
     filename: string;
+    page: number;
   };
 }
 
 export default function LegalDashboard() {
+  // --- States ---
   const [file, setFile] = useState<File | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null); // NUEVO: Para previsualizar el PDF
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Search States
   const [query, setQuery] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
 
+  // --- Handlers ---
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
+      const selectedFile = e.target.files[0];
+      setFile(selectedFile);
       setError(null);
       setResult(null);
       setSearchResults([]);
       setQuery("");
+      
+      // Creamos una URL temporal para visualizar el PDF en el navegador
+      const objectUrl = URL.createObjectURL(selectedFile);
+      setPdfUrl(objectUrl);
     }
   };
 
@@ -79,7 +93,7 @@ export default function LegalDashboard() {
       const response = await axios.post("http://127.0.0.1:8000/api/v1/search", {
         query: query,
         filename: result.filename,
-        doc_language: result.language,
+        doc_language: result.language || "es", 
         top_k: 3
       });
       setSearchResults(response.data.results);
@@ -90,140 +104,196 @@ export default function LegalDashboard() {
     }
   };
 
+  // Limpiar memoria de la URL del PDF cuando el componente se desmonta
+  useEffect(() => {
+    return () => {
+      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+    };
+  }, [pdfUrl]);
+
   return (
-    <main className="min-h-screen bg-slate-50 p-8 font-sans text-slate-900">
-      <div className="max-w-4xl mx-auto space-y-8">
+    // ESTRUCTURA PRINCIPAL: Pantalla dividida (H-SCREEN)
+    <main className="flex h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden">
+      
+      {/* --- PANEL IZQUIERDO: Interacción y Análisis (Scrollable) --- */}
+      <div className="w-1/2 h-full flex flex-col border-r border-slate-200 bg-white">
         
-        {/* Header */}
-        <header className="text-center space-y-2">
-          <h1 className="text-4xl font-bold tracking-tight text-indigo-900">
-            ClauseWatch AI
+        {/* Header Fijo */}
+        <header className="p-6 border-b border-slate-100 bg-white z-10">
+          <h1 className="text-2xl font-bold tracking-tight text-indigo-900 flex items-center gap-2">
+            <div className="p-2 bg-indigo-600 rounded-lg">
+              <FileText className="text-white w-5 h-5" />
+            </div>
+            LegalShield AI
           </h1>
-          <p className="text-slate-500">
-            Smart Contract Analysis & Semantic Search
-          </p>
         </header>
 
-        {/* Upload Section */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center">
-          <div className="flex flex-col items-center justify-center space-y-4">
-            <div className="p-4 bg-indigo-50 rounded-full">
-              <Upload className="w-8 h-8 text-indigo-600" />
-            </div>
+        {/* Contenido con Scroll */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-8">
+          
+          {/* 1. Upload Section (Compacta) */}
+          <div className={`transition-all duration-300 ${result ? 'p-4 border-b border-slate-100' : 'py-10'}`}>
+            {!result && (
+               <div className="text-center mb-6">
+                  <h2 className="text-lg font-medium text-slate-700">Comienza el análisis</h2>
+                  <p className="text-slate-500 text-sm">Sube tu contrato para detectar riesgos y chatear con él.</p>
+               </div>
+            )}
             
-            <div className="space-y-2">
-              <label className="cursor-pointer inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 transition-all">
-                Select Contract (PDF)
-                <input 
-                  type="file" 
-                  accept=".pdf" 
-                  className="sr-only"
-                  onChange={handleFileChange}
-                />
+            <div className="flex gap-4 items-center justify-center">
+              <label className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors text-sm font-medium border border-indigo-200">
+                <Upload className="w-4 h-4" />
+                {file ? "Cambiar Archivo" : "Subir PDF"}
+                <input type="file" accept=".pdf" className="sr-only" onChange={handleFileChange} />
               </label>
-              <p className="text-sm text-slate-400">
-                {file ? file.name : "No file selected"}
-              </p>
+              
+              <button
+                onClick={handleAnalyze}
+                disabled={!file || loading}
+                className="flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-all shadow-sm"
+              >
+                {loading ? <Loader2 className="animate-spin w-4 h-4" /> : "Analizar Riesgos"}
+              </button>
             </div>
-
-            <button
-              onClick={handleAnalyze}
-              disabled={!file || loading}
-              className={`w-full max-w-xs flex justify-center py-2 px-4 rounded-md shadow-sm text-sm font-medium text-white transition-colors ${
-                !file || loading ? "bg-slate-300" : "bg-slate-900 hover:bg-slate-800"
-              }`}
-            >
-              {loading ? <Loader2 className="animate-spin mr-2 h-5 w-5" /> : "Analyze Document"}
-            </button>
-            {error && <p className="text-red-500 text-sm">{error}</p>}
+            {file && !result && <p className="text-center text-xs text-slate-400 mt-2">{file.name}</p>}
+            {error && <p className="text-red-500 text-sm text-center mt-2">{error}</p>}
           </div>
-        </div>
 
-        {/* Results Section */}
-        {result && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            
-            {/* 1. Risk Score Card */}
-            <div className="bg-white rounded-xl shadow-md overflow-hidden border border-slate-200 p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold text-slate-800 flex items-center">
-                  <FileText className="mr-2 h-5 w-5 text-slate-400" />
-                  Analysis Report
-                </h2>
-                <div className={`px-4 py-1 rounded-full text-sm font-bold ${
-                  result.risk_score > 50 ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"
-                }`}>
-                  Risk Score: {result.risk_score}/100
-                </div>
-              </div>
-              <div className="w-full bg-slate-200 rounded-full h-2.5">
-                <div 
-                  className={`h-2.5 rounded-full ${result.risk_score > 50 ? "bg-red-500" : "bg-green-500"}`} 
-                  style={{ width: `${result.risk_score}%` }}
-                ></div>
-              </div>
-            </div>
-
-            {/* --- Chat section --- */}
-            <div className="bg-indigo-50 rounded-xl border border-indigo-100 p-6 space-y-4">
-              <h3 className="text-lg font-semibold text-indigo-900 flex items-center">
-                <Search className="mr-2 h-5 w-5" />
-                Ask the Contract
-              </h3>
-              <div className="flex gap-2">
-                <input 
-                  type="text" 
-                  placeholder="Ex: Can I cancel the contract anytime?"
-                  className="flex-1 p-3 rounded-lg border border-indigo-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                />
-                <button 
-                  onClick={handleSearch}
-                  disabled={searchLoading || !query}
-                  className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center"
-                >
-                  {searchLoading ? <Loader2 className="animate-spin" /> : <ArrowRight />}
-                </button>
-              </div>
-
-              {/* Search Results */}
-              <div className="space-y-3">
-                {searchResults.map((res, idx) => (
-                  <div key={idx} className="bg-white p-4 rounded-lg border border-indigo-100 text-sm text-slate-700 shadow-sm animate-in fade-in">
-                    <p className="italic text-slate-500 mb-1 text-xs">
-                      Relevant Clause (Match: {(res.similarity_score * 100).toFixed(0)}%)
-                    </p>
-                    <p>{res.text}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Detailed Clauses List */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium text-slate-700">Identified Risks</h3>
-              {result.details.map((clause, idx) => (
-                <div key={idx} className={`p-4 rounded-lg border flex items-start space-x-4 ${
-                    clause.is_risky ? "bg-red-50 border-red-200" : "bg-white border-slate-200"
+          {/* 2. RESULTADOS DEL ANÁLISIS */}
+          {result && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              
+              {/* Score Card */}
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="font-semibold text-slate-700">Nivel de Riesgo Global</h3>
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${
+                    result.risk_score > 50 ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"
                   }`}>
-                  <div className="mt-1">
-                    {clause.is_risky ? <AlertTriangle className="h-5 w-5 text-red-500" /> : <CheckCircle className="h-5 w-5 text-green-500" />}
-                  </div>
-                  <div>
-                    <h4 className={`text-sm font-bold ${clause.is_risky ? "text-red-800" : "text-slate-700"}`}>
-                      {clause.label}
-                    </h4>
-                    <p className="text-sm text-slate-600 mt-1">"{clause.text_snippet}"</p>
-                  </div>
+                    {result.risk_score > 50 ? "Alto Riesgo" : "Seguro"}
+                  </span>
                 </div>
-              ))}
-            </div>
+                <div className="w-full bg-slate-100 rounded-full h-3 mb-2">
+                  <div 
+                    className={`h-3 rounded-full transition-all duration-1000 ${
+                      result.risk_score > 50 ? "bg-red-500" : "bg-green-500"
+                    }`} 
+                    style={{ width: `${result.risk_score}%` }}
+                  ></div>
+                </div>
+                <p className="text-xs text-slate-500 text-right">{result.risk_score}/100 Puntos</p>
+              </div>
 
+              {/* --- CHAT BOT SECTION --- */}
+              <div className="bg-indigo-50 rounded-xl border border-indigo-100 p-5 space-y-4 shadow-sm">
+                <div className="flex items-center gap-2 text-indigo-900 font-semibold border-b border-indigo-200 pb-2">
+                  <MessageSquare className="w-5 h-5" />
+                  <h3>Chat con el Contrato</h3>
+                </div>
+                
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    placeholder="Ej: ¿Puedo cancelar sin pagar?"
+                    className="flex-1 p-3 rounded-lg border border-indigo-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  />
+                  <button 
+                    onClick={handleSearch}
+                    disabled={searchLoading || !query}
+                    className="bg-indigo-600 text-white px-4 rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                  >
+                    {searchLoading ? <Loader2 className="animate-spin w-5 h-5" /> : <ArrowRight className="w-5 h-5" />}
+                  </button>
+                </div>
+
+                {/* Chat Responses */}
+                <div className="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                  {!searchLoading && query && searchResults.length === 0 && (
+                    <p className="text-center text-xs text-slate-500 italic">No se encontró información relevante.</p>
+                  )}
+                  
+                  {searchResults.map((res, idx) => (
+                    <div key={idx} className="bg-white p-3 rounded-lg border border-indigo-100 shadow-sm text-sm hover:border-indigo-300 transition-colors">
+                      <div className="flex items-start gap-3">
+                        <div className="mt-1 min-w-[20px]">
+                           <Search className="w-4 h-4 text-indigo-400" />
+                        </div>
+                        <div className="w-full">
+                          {/* Texto de la respuesta */}
+                          <p className="text-slate-700 leading-relaxed">{res.text}</p>
+                          
+                          {/* Footer de la tarjeta con Metadatos */}
+                          <div className="flex justify-between items-center mt-3 pt-2 border-t border-slate-50">
+                            <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">
+                              Página {res.metadata.page || "?"}
+                            </span>
+                            <span className="text-[10px] text-slate-400">
+                              Coincidencia: {(res.similarity_score * 100).toFixed(0)}%
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* --- DETECTED RISKS (Highlight Simulation) --- */}
+              <div>
+                <h3 className="font-semibold text-slate-700 mb-4 flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-amber-500" />
+                  Cláusulas Detectadas
+                </h3>
+                <div className="space-y-3">
+                  {result.details.map((clause, idx) => (
+                    <div key={idx} className={`p-4 rounded-lg border transition-all hover:shadow-md cursor-default ${
+                        clause.is_risky ? "bg-red-50 border-red-200" : "bg-white border-slate-200"
+                      }`}>
+                      <div className="flex gap-3">
+                        <div className="mt-0.5">
+                          {clause.is_risky ? <X className="w-5 h-5 text-red-500" /> : <CheckCircle className="w-5 h-5 text-green-500" />}
+                        </div>
+                        <div>
+                          <h4 className={`text-xs font-bold uppercase tracking-wider mb-1 ${
+                            clause.is_risky ? "text-red-700" : "text-slate-600"
+                          }`}>
+                            {clause.label}
+                          </h4>
+                          <p className="text-sm text-slate-700 italic border-l-2 border-slate-300 pl-3 py-1">
+                            "{clause.text_snippet}"
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* --- PANEL DERECHO: VISOR DE PDF --- */}
+      <div className="w-1/2 h-full bg-slate-800 flex items-center justify-center relative">
+        {pdfUrl ? (
+          <iframe
+            src={`${pdfUrl}#toolbar=0&navpanes=0`} // Ocultamos toolbar básica
+            className="w-full h-full"
+            title="PDF Preview"
+          />
+        ) : (
+          <div className="text-center text-slate-400 p-10">
+            <FileText className="w-16 h-16 mx-auto mb-4 opacity-20" />
+            <p className="text-lg font-medium">Vista Previa del Documento</p>
+            <p className="text-sm opacity-60">Sube un PDF para verlo aquí</p>
           </div>
         )}
       </div>
+
     </main>
   );
 }
