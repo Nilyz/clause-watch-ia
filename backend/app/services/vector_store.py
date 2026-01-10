@@ -1,53 +1,71 @@
-import chromadb
-from chromadb.utils import embedding_functions
-import uuid
+import google.generativeai as genai
+import numpy as np
+import os
 
-class ContractVectorStore:
+class InMemoryVectorStore:
     def __init__(self):
-        self.client = chromadb.PersistentClient(path="./chroma_db")
-        
-        self.embedding_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
-            model_name="paraphrase-multilingual-MiniLM-L12-v2"
-        )
-        self.collection = self.client.get_or_create_collection(
-            name="contracts_rag",
-            embedding_function=self.embedding_fn
-        )
+        self.store = {}
 
+        self.model_name = "models/text-embedding-004" 
 
-    def add_contract(self, filename: str, chunks_data: list[dict]):
+    def get_embedding(self, text):
+        try:
+            result = genai.embed_content(
+                model=self.model_name,
+                content=text,
+                task_type="retrieval_document"
+            )
+            return result['embedding']
+        except Exception as e:
+            print(f"Error getting embedding: {e}")
+            return []
+
+    def add_contract(self, filename: str, chunks: list):
+        print(f"Indexing {filename} using Google Embeddings...")
         
-        if not chunks_data:
-            return
+        self.store[filename] = []
+        
+        for chunk in chunks:
+            text = chunk["text"]
+            vector = self.get_embedding(text)
             
-        texts = [item['text'] for item in chunks_data]
+            if vector:
+                self.store[filename].append({
+                    "text": text,
+                    "vector": np.array(vector),
+                    "metadata": {"page": chunk["page"]}
+                })
         
-        ids = [str(uuid.uuid4()) for _ in texts]
-        
-        metadatas = []
-        for i, item in enumerate(chunks_data):
-            meta = {
-                "filename": filename,
-                "chunk_index": i,
-                "page": item.get("page", 1) 
-            }
-            metadatas.append(meta)
-        
-        self.collection.add(
-            documents=texts,
-            metadatas=metadatas,
-            ids=ids
-        )
+        print(f"Indexed {len(self.store[filename])} chunks for {filename}")
 
-    def search_similar(self, query: str, filename: str = None, n_results=3):
-        filter_dict = {"filename": filename} if filename else None
-        
-        results = self.collection.query(
-            query_texts=[query],
-            n_results=n_results,
-            where=filter_dict  
-        )
-        return results
+    def search_similar(self, query: str, filename: str, n_results: int = 3):
+        if filename not in self.store:
+            return {"documents": [[]], "metadatas": [[]], "distances": [[]]}
 
-# Singleton instance
-vector_db = ContractVectorStore()
+        try:
+            query_emb = genai.embed_content(
+                model=self.model_name,
+                content=query,
+                task_type="retrieval_query"
+            )['embedding']
+            query_vec = np.array(query_emb)
+        except:
+            return {"documents": [[]], "metadatas": [[]], "distances": [[]]}
+
+        scores = []
+        for item in self.store[filename]:
+            doc_vec = item["vector"]
+            score = np.dot(query_vec, doc_vec) / (np.linalg.norm(query_vec) * np.linalg.norm(doc_vec))
+            scores.append((score, item))
+
+        scores.sort(key=lambda x: x[0], reverse=True)
+        top_results = scores[:n_results]
+
+        return {
+            "documents": [[res[1]["text"] for res in top_results]],
+            "metadatas": [[res[1]["metadata"] for res in top_results]],
+            "distances": [[1 - res[0] for res in top_results]]
+        }
+
+# Instancia global (Singularidad)
+vector_db = InMemoryVectorStore()
