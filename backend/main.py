@@ -14,6 +14,7 @@ from app.core.database import engine, Base, get_db
 from app.models.sql_models import AnalysisRecord
 from app.services.vector_store import vector_db
 
+
 # --- CONFIGURATION ---
 load_dotenv()
 
@@ -130,6 +131,17 @@ def health_check():
 
 @app.post("/api/v1/analyze", response_model=ContractAnalysisResponse)
 async def analyze_contract(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    
+    # Magic Bytes Check for security
+    header = await file.read(4)
+    await file.seek(0)
+    
+    if header != b'%PDF':
+        raise HTTPException(
+            status_code=400, 
+            detail="Security Alert: File is not a valid PDF (Invalid Magic Bytes)."
+        )
+    
     # 1. Validation
     if not file.filename.endswith(".pdf"):
         raise HTTPException(
