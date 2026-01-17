@@ -3,69 +3,69 @@ import { AnalysisResult } from "@/lib/types";
 import { Translation } from "@/lib/translations";
 
 interface RiskScoreCardProps {
-    result: AnalysisResult;
-    t: Translation;
+  result: AnalysisResult;
+  t: Translation;
 }
 
 export default function RiskScoreCard({ result, t }: RiskScoreCardProps) {
-    const isHighRisk = result.risk_score > 50;
+  const isHighRisk = result.risk_score > 50;
 
-    return (
-        <div className="bg-legal-surface border border-legal-border rounded-2xl p-6 shadow-xl relative overflow-hidden group animate-in fade-in slide-in-from-bottom-2">
-            {/* Glow Effect */}
-            <div
-                className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl opacity-20 -mr-10 -mt-10 ${
-                    isHighRisk ? "bg-risk-high" : "bg-risk-safe"
-                }`}
-            ></div>
+  return (
+    <div className="bg-[#D2B68A]/5 border border-[#D2B68A]/40 rounded-2xl p-6 shadow-md relative overflow-hidden group animate-in fade-in slide-in-from-bottom-2">
+      
 
-            <div className="relative z-10 flex justify-between items-end mb-6">
-                <div>
-                    <h2 className="text-xs font-bold uppercase tracking-widest text-legal-muted mb-1 flex items-center gap-2">
-                        <Activity className="w-4 h-4" /> {t.riskScoreTitle}
-                    </h2>
-                    <div className="flex items-baseline gap-2">
-                        <span
-                            className={`text-5xl font-serif font-bold ${
-                                isHighRisk ? "text-red-400" : "text-green-400"
-                            }`}
-                        >
-                            {result.risk_score}
-                        </span>
-                        <span className="text-lg text-legal-muted font-medium">
-                            / 100
-                        </span>
-                    </div>
-                </div>
-
-                <div
-                    className={`flex items-center gap-2 px-4 py-2 rounded-full border ${
-                        isHighRisk
-                            ? "bg-red-950/30 border-red-900 text-red-400"
-                            : "bg-green-950/30 border-green-900 text-green-400"
-                    }`}
-                >
-                    {isHighRisk ? (
-                        <AlertTriangle className="w-4 h-4" />
-                    ) : (
-                        <CheckCircle className="w-4 h-4" />
-                    )}
-                    <span className="text-xs font-bold uppercase tracking-wide">
-                        {isHighRisk ? t.riskHigh : t.riskLow}
-                    </span>
-                </div>
-            </div>
-
-            <div className="h-2 w-full bg-legal-bg rounded-full overflow-hidden border border-legal-border">
-                <div
-                    className={`h-full transition-all duration-1000 ease-out ${
-                        isHighRisk
-                            ? "bg-risk-high shadow-[0_0_15px_rgba(239,68,68,0.5)]"
-                            : "bg-risk-safe shadow-[0_0_15px_rgba(34,197,94,0.5)]"
-                    }`}
-                    style={{ width: `${result.risk_score}%` }}
-                ></div>
-            </div>
+      <div className="relative z-10 flex justify-between items-end mb-6">
+        <div>
+          {/* TITLE */}
+          <h2 className="text-xs font-bold uppercase tracking-widest text-[#222D52] mb-1 flex items-center gap-2">
+            <Activity className="w-4 h-4 text-[#D2B68A]" /> {t.riskScoreTitle}
+          </h2>
+          
+          {/* SCORE */}
+          <div className="flex items-baseline gap-2">
+            <span
+              className={`text-5xl font-serif font-bold ${
+                isHighRisk ? "text-red-700" : "text-green-700"
+              }`}
+            >
+              {result.risk_score}
+            </span>
+            <span className="text-lg text-[#222D52]/40 font-medium">
+              / 100
+            </span>
+          </div>
         </div>
-    );
+
+        {/* BADGE */}
+        <div
+          className={`flex items-center gap-2 px-4 py-2 rounded-full border ${
+            isHighRisk
+              ? "bg-red-50 border-red-200 text-red-700"
+              : "bg-green-50 border-green-200 text-green-700"
+          }`}
+        >
+          {isHighRisk ? (
+            <AlertTriangle className="w-4 h-4" />
+          ) : (
+            <CheckCircle className="w-4 h-4" />
+          )}
+          <span className="text-xs font-bold uppercase tracking-wide">
+            {isHighRisk ? t.riskHigh : t.riskLow}
+          </span>
+        </div>
+      </div>
+
+      {/* BAR */}
+      <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden border border-gray-200">
+        <div
+          className={`h-full transition-all duration-1000 ease-out ${
+            isHighRisk
+              ? "bg-red-700 shadow-[0_0_10px_rgba(220,38,38,0.3)]"
+              : "bg-green-700 shadow-[0_0_10px_rgba(22,163,74,0.3)]"
+          }`}
+          style={{ width: `${result.risk_score}%` }}
+        ></div>
+      </div>
+    </div>
+  );
 }

@@ -8,19 +8,23 @@ interface PdfViewerProps {
 
 export default function PdfViewer({ pdfUrl, t }: PdfViewerProps) {
     return (
-        <div className="bg-legal-surface border border-legal-border rounded-2xl p-1 shadow-2xl h-[calc(100vh-8rem)] flex flex-col sticky top-24">
-            <div className="px-4 py-2 border-b border-legal-border flex justify-between items-center bg-legal-surface rounded-t-xl">
-                <span className="text-xs font-bold text-legal-muted uppercase tracking-widest">
+        <div className="bg-[#FDFFFF] border border-[#D2B68A]/40 rounded-2xl shadow-xl h-[calc(100vh-8rem)] flex flex-col sticky top-24 overflow-hidden">
+            {/* HEADER*/}
+            <div className="px-5 py-3 border-b border-[#D2B68A]/30 flex justify-between items-center bg-[#D2B68A]/50">
+                <span className="text-xs font-bold text-[#222D52] uppercase tracking-widest flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-[#222D52]" />
                     {t.originalDoc}
                 </span>
+
                 {pdfUrl && (
-                    <span className="text-[10px] text-primary bg-primary-light px-2 py-0.5 rounded">
+                    <span className="text-[10px] font-bold bg-[#222D52] text-[#D2B68A] px-2 py-0.5 rounded shadow-sm">
                         {t.preview}
                     </span>
                 )}
             </div>
 
-            <div className="flex-1 bg-legal-bg relative rounded-b-xl overflow-hidden group">
+            {/* PDF VIEWER */}
+            <div className="flex-1 bg-[#FDFFFF] relative group">
                 {pdfUrl ? (
                     <iframe
                         src={`${pdfUrl}#toolbar=0&navpanes=0`}
@@ -28,11 +32,13 @@ export default function PdfViewer({ pdfUrl, t }: PdfViewerProps) {
                         title="PDF Preview"
                     />
                 ) : (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-legal-muted opacity-50">
-                        <div className="w-24 h-32 border-2 border-dashed border-legal-border rounded flex items-center justify-center mb-4">
-                            <FileText className="w-8 h-8" />
+                    <div className="absolute inset-0 flex flex-col items-center justify-center opacity-60">
+                        <div className="w-24 h-32 border-2 border-dashed border-[#D2B68A]/50 rounded-lg flex items-center justify-center mb-4 bg-[#FDFFFF]">
+                            <FileText className="w-8 h-8 text-[#222D52]/40" />
                         </div>
-                        <p className="text-sm font-medium">{t.noFile}</p>
+                        <p className="text-sm font-medium text-[#222D52]/60 font-serif italic">
+                            {t.noFile}
+                        </p>
                     </div>
                 )}
             </div>

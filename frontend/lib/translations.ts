@@ -22,10 +22,11 @@ export const TRANSLATIONS = {
         noFile: "Miniatura del PDF",
         errorConnection: "Error de conexión con el servidor.",
         page: "Pág.",
+        noClauseDisplay: "No hay cláusulas para mostrar.",
         // Footer
         footerRights: "Todos los derechos reservados.",
         footerBuilt: "Desarrollado por",
-        footerRepo: "Código Fuente",
+        footerRepo: "Repositorio",
     },
     en: {
         titleSub: "AI",
@@ -50,10 +51,11 @@ export const TRANSLATIONS = {
         noFile: "PDF Thumbnail",
         errorConnection: "Connection error with server.",
         page: "Pg.",
+        noClauseDisplay: "No clauses to display.",
         // Footer
         footerRights: "All rights reserved.",
         footerBuilt: "Built by",
-        footerRepo: "Source Code",
+        footerRepo: "Repository",
     },
 };
 

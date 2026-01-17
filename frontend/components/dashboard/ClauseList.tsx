@@ -1,4 +1,4 @@
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, CheckCircle } from "lucide-react";
 import { ClauseAnalysis } from "@/lib/types";
 import { Translation } from "@/lib/translations";
 
@@ -10,51 +10,67 @@ interface ClauseListProps {
 
 export default function ClauseList({ clauses, count, t }: ClauseListProps) {
     return (
-        <div className="bg-legal-surface/50 border border-legal-border rounded-2xl p-6 shadow-xl animate-in fade-in slide-in-from-bottom-8">
-            <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2 text-risk-high">
-                    <AlertTriangle className="w-5 h-5" />
+        <div className="bg-[#FDFFFF] border border-[#D2B68A]/40 rounded-2xl p-6 shadow-md animate-in fade-in slide-in-from-bottom-8">
+            {/* HEADER */}
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-[#D2B68A]/20">
+                <div className="flex items-center gap-2 text-[#222D52]">
+                    <AlertTriangle className="w-5 h-5 text-[#D2B68A]" />
                     <h2 className="text-sm font-bold uppercase tracking-widest">
                         {t.detectedClauses}
                     </h2>
                 </div>
-                <span className="text-xs bg-legal-border text-legal-muted px-2 py-1 rounded-full">
+
+                {/* BADGE */}
+                <span className="text-[10px] font-bold bg-[#222D52] text-[#D2B68A] px-3 py-1 rounded-full shadow-sm">
                     {count} {t.risksFound}
                 </span>
             </div>
 
-            <div className="space-y-3">
+            {/* CARD LIST */}
+            <div className="space-y-4">
                 {clauses.map((clause, idx) => {
                     const isRisky = clause.is_risky;
                     return (
                         <div
                             key={idx}
                             className={`
-                p-4 rounded-lg border-l-4 transition-all
+                p-5 rounded-xl border transition-all duration-300 hover:shadow-md
                 ${
                     isRisky
-                        ? "bg-red-500/5 border-risk-high border-t border-r border-b border-t-risk-high/20 border-r-risk-high/20 border-b-risk-high/20"
-                        : "bg-green-500/5 border-risk-safe border-t-risk-safe/20"
+                        ? "bg-red-50 border-red-100"
+                        : "bg-green-50 border-green-100"
                 }
               `}
                         >
-                            <div className="flex justify-between items-start mb-1">
+                            <div className="flex justify-between items-center mb-3">
                                 <h3
-                                    className={`text-xs font-bold uppercase ${
+                                    className={`text-xs font-bold uppercase tracking-wide flex items-center gap-2 ${
                                         isRisky
-                                            ? "text-red-400"
-                                            : "text-green-400"
+                                            ? "text-red-800"
+                                            : "text-green-800"
                                     }`}
                                 >
+                                    {isRisky ? (
+                                        <AlertTriangle className="w-3.5 h-3.5" />
+                                    ) : (
+                                        <CheckCircle className="w-3.5 h-3.5" />
+                                    )}
                                     {clause.label}
                                 </h3>
                             </div>
-                            <p className="text-sm text-legal-muted line-clamp-2 hover:line-clamp-none transition-all cursor-default">
+
+                            <p className="text-sm text-[#222D52]/80 font-serif leading-relaxed italic">
                                 "{clause.text_snippet}"
                             </p>
                         </div>
                     );
                 })}
+
+                {clauses.length === 0 && (
+                    <div className="text-center py-6 text-[#222D52]/40 text-sm font-serif italic">
+                        {t.noClauseDisplay}
+                    </div>
+                )}
             </div>
         </div>
     );
