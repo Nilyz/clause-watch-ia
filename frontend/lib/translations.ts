@@ -23,6 +23,7 @@ export const TRANSLATIONS = {
         errorConnection: "Error de conexión con el servidor.",
         page: "Pág.",
         noClauseDisplay: "No hay cláusulas para mostrar.",
+        defaultQuestion: "Explícame esta cláusula en términos sencillos",
         // Footer
         footerRights: "Todos los derechos reservados.",
         footerBuilt: "Desarrollado por",
@@ -52,6 +53,7 @@ export const TRANSLATIONS = {
         errorConnection: "Connection error with server.",
         page: "Pg.",
         noClauseDisplay: "No clauses to display.",
+        defaultQuestion: "Explain this clause in simple terms",
         // Footer
         footerRights: "All rights reserved.",
         footerBuilt: "Built by",

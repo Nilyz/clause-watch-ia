@@ -111,7 +111,7 @@ def extract_text_with_metadata(file_content: bytes) -> List[dict]:
                     sentences = clean_text.split(". ")
                     for sentence in sentences:
                         if len(sentence) > 30:
-                            final_sent = sentence.strip().rstrip(".") + "."
+                            final_sent = sentence.strip().rstrip(".") 
 
                             chunks_data.append(
                                 {"text": final_sent, "page": page_num + 1}

@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { AlertTriangle } from "lucide-react";
 
-// --- Imports de tu nueva estructura modular ---
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import FileUploader from "@/components/dashboard/FileUploader";
@@ -26,7 +25,7 @@ export default function LegalDashboard() {
     const [result, setResult] = useState<AnalysisResult | null>(null);
     const [error, setError] = useState<string | null>(null);
 
-    // Idioma
+    // Language State
     const [language, setLanguage] = useState<Language>("es");
     const t = TRANSLATIONS[language];
 
@@ -34,10 +33,9 @@ export default function LegalDashboard() {
     const [query, setQuery] = useState("");
     const [searchLoading, setSearchLoading] = useState(false);
     const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-    // (Opcional) Podrías mover la lógica de explicaciones dentro de ChatAssistant,
-    // pero dejarla aquí está bien para empezar.
+
     const [explanations, setExplanations] = useState<{ [key: number]: string }>(
-        {}
+        {},
     );
     const [explainingState, setExplainingState] = useState<{
         [key: number]: boolean;
@@ -70,7 +68,7 @@ export default function LegalDashboard() {
         try {
             const response = await axios.post(
                 `${API_URL}/api/v1/analyze`,
-                formData
+                formData,
             );
             setResult(response.data);
         } catch (err) {
@@ -83,7 +81,12 @@ export default function LegalDashboard() {
 
     const handleSearch = async () => {
         if (!query || !result) return;
+
         setSearchLoading(true);
+
+        setExplanations({});
+        setExplainingState({});
+        
 
         try {
             const response = await axios.post(`${API_URL}/api/v1/search`, {
@@ -103,9 +106,8 @@ export default function LegalDashboard() {
     const handleExplain = async (
         index: number,
         text: string,
-        userQuery: string
+        userQuery: string,
     ) => {
-        // Si ya existe explicación, la borramos (toggle)
         if (explanations[index]) {
             const newExpl = { ...explanations };
             delete newExpl[index];
@@ -119,10 +121,7 @@ export default function LegalDashboard() {
             let queryToSend = userQuery;
 
             if (!queryToSend || queryToSend.trim() === "") {
-                queryToSend =
-                    language === "en"
-                        ? "Explain this clause in simple terms"
-                        : "Explícame esta cláusula en términos sencillos";
+                queryToSend = t.defaultQuestion;
             }
 
             const response = await axios.post(`${API_URL}/api/v1/explain`, {
@@ -153,7 +152,7 @@ export default function LegalDashboard() {
 
             <main className="container mx-auto px-6 py-8 flex-grow">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                    {/* COLUMNA IZQUIERDA (Dashboard) */}
+                    {/* DASHBOARD */}
                     <div className="lg:col-span-7 space-y-6">
                         <FileUploader
                             file={file}
@@ -194,7 +193,7 @@ export default function LegalDashboard() {
                         )}
                     </div>
 
-                    {/* COLUMNA DERECHA (PDF) */}
+                    {/* PDF */}
                     <div className="lg:col-span-5 sticky top-24">
                         <PdfViewer pdfUrl={pdfUrl} t={t} />
                     </div>

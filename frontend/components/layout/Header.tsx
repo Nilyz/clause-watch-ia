@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Scale, Globe, Mail } from "lucide-react";
 import { Translation, Language } from "@/lib/translations";
 
@@ -8,8 +9,42 @@ interface HeaderProps {
 }
 
 export default function Header({ t, lang, toggleLang }: HeaderProps) {
+    const [isVisible, setIsVisible] = useState(true);
+    const [lastScrollY, setLastScrollY] = useState(0);
+
+    useEffect(() => {
+        const controlNavbar = () => {
+            // Obtenemos la posición actual del scroll
+            const currentScrollY = window.scrollY;
+
+            if (currentScrollY > lastScrollY && currentScrollY > 50) {
+                // Si bajamos (y pasamos de 50px), ocultamos
+                setIsVisible(false);
+            } else {
+                // Si subimos, mostramos
+                setIsVisible(true);
+            }
+
+            // Guardamos la posición actual para la próxima comparación
+            setLastScrollY(currentScrollY);
+        };
+
+        window.addEventListener("scroll", controlNavbar);
+
+        // Limpieza del evento al desmontar
+        return () => {
+            window.removeEventListener("scroll", controlNavbar);
+        };
+    }, [lastScrollY]);
+
     return (
-        <header className="bg-[#222D52] border-b border-[#D2B68A]/30 sticky top-0 z-50 shadow-md">
+        <header
+            className={`
+                bg-[#222D52] border-b border-[#D2B68A]/30 sticky top-0 z-50 shadow-md
+                transition-transform duration-300 ease-in-out
+                ${isVisible ? "translate-y-0" : "-translate-y-full"}
+            `}
+        >
             <div className="container mx-auto px-6 py-5 flex justify-between items-center">
                 {/* --- LOGO --- */}
                 <div className="flex items-center gap-3">
