@@ -2,7 +2,7 @@
 ClauseWatch AI is an intelligent contract analysis platform specialized in **Spanish Labor Law**. It leverages a **Hybrid AI Architecture** combining heuristic linguistic patterns with **Zero-Shot Transformers** for high-precision risk detection, alongside **Generative AI** for deep legal explanation.
 
 ## Preview
-![ClauseWatch Preview](./assets/preview.png "ClauseWatch Dashboard")
+![ClauseWatch Preview](./frontend/public/preview_clausewatch.png "ClauseWatch Dashboard")
 
 ## About
 ClauseWatch AI modernizes the legal review process by transforming dense PDFs into actionable insights. Moving beyond simple keyword search, ClauseWatch implements a **Multi-Stage Analysis Pipeline**. It combines deterministic detection for known abusive clauses (based on the Spanish *"Estatuto de los Trabajadores"*) with a **Zero-Shot AI Model** to understand context and detect nuanced risks (like "Unilateral Modification" or "Rights Waiver") that rigid rules might miss.

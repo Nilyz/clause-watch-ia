@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
-import { Scale, Globe, Mail } from "lucide-react";
+import { Globe, Mail } from "lucide-react";
 import { Translation, Language } from "@/lib/translations";
+import Image from "next/image";
+import Link from "next/link";
 
 interface HeaderProps {
     t: Translation;
@@ -14,24 +16,19 @@ export default function Header({ t, lang, toggleLang }: HeaderProps) {
 
     useEffect(() => {
         const controlNavbar = () => {
-            // Obtenemos la posición actual del scroll
             const currentScrollY = window.scrollY;
 
             if (currentScrollY > lastScrollY && currentScrollY > 50) {
-                // Si bajamos (y pasamos de 50px), ocultamos
                 setIsVisible(false);
             } else {
-                // Si subimos, mostramos
                 setIsVisible(true);
             }
 
-            // Guardamos la posición actual para la próxima comparación
             setLastScrollY(currentScrollY);
         };
 
         window.addEventListener("scroll", controlNavbar);
 
-        // Limpieza del evento al desmontar
         return () => {
             window.removeEventListener("scroll", controlNavbar);
         };
@@ -46,12 +43,21 @@ export default function Header({ t, lang, toggleLang }: HeaderProps) {
             `}
         >
             <div className="container mx-auto px-6 py-5 flex justify-between items-center">
-                {/* --- LOGO --- */}
-                <div className="flex items-center gap-3">
-                    <Scale
-                        className="text-[#D2B68A] w-7 h-7"
-                        strokeWidth={1.5}
-                    />
+                {/* --- LOGO AREA ---*/}
+                <Link
+                    href="/"
+                    className="flex items-center gap-3 hover:opacity-90 transition-opacity"
+                >
+                    <div className="relative h-10 w-15">
+                        <Image
+                            src="/clausewatch_logo.png"
+                            alt="ClauseWatch Logo"
+                            width={70}
+                            height={70}
+                            className="object-contain"
+                            priority
+                        />
+                    </div>
 
                     <h1 className="text-xl font-sans font-bold tracking-wide text-[#FDFFFF]">
                         ClauseWatch{" "}
@@ -59,7 +65,7 @@ export default function Header({ t, lang, toggleLang }: HeaderProps) {
                             {t.titleSub}
                         </span>
                     </h1>
-                </div>
+                </Link>
 
                 <div className="flex items-center gap-6">
                     {/* LANGUAGE */}
