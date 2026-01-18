@@ -16,8 +16,9 @@ else:
 
 model = genai.GenerativeModel("gemini-2.5-flash")
 
+
 def generate_legal_explanation(prompt: str) -> str:
- 
+
     try:
         response = model.generate_content(prompt)
         return response.text.strip()

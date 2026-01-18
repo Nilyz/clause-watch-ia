@@ -28,6 +28,11 @@ export const TRANSLATIONS = {
         footerRights: "Todos los derechos reservados.",
         footerBuilt: "Desarrollado por",
         footerRepo: "Repositorio",
+        // Risk Labels
+        labelRisk: "RIESGO DETECTADO",
+        labelSafe: "CLÁUSULA ESTÁNDAR",
+        labelAiRisk: "RIESGO",
+        labelNeutral: "INFO NEUTRA",
     },
     en: {
         titleSub: "AI",
@@ -58,6 +63,11 @@ export const TRANSLATIONS = {
         footerRights: "All rights reserved.",
         footerBuilt: "Built by",
         footerRepo: "Repository",
+        // Risk Labels
+        labelRisk: "POTENTIAL RISK",
+        labelSafe: "STANDARD CLAUSE",
+        labelAiRisk: "DETECTED RISK",
+        labelNeutral: "NEUTRAL INFO",
     },
 };
 

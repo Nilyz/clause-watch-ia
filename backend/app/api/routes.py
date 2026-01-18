@@ -84,8 +84,9 @@ async def analyze_contract(file: UploadFile = File(...), db: Session = Depends(g
     # NLP Analysis
     analyzed_clauses = []
     risky_count = 0
+    high_severity_count = 0
 
-    for item in chunks_with_meta[:100]:
+    for item in chunks_with_meta[:200]: 
         text = item["text"]
         result = nlp_engine.analyze_clause(text)
 
@@ -93,13 +94,23 @@ async def analyze_contract(file: UploadFile = File(...), db: Session = Depends(g
             analyzed_clauses.append(result)
             if result["is_risky"]:
                 risky_count += 1
+                if result["confidence"] > 0.90 or result["label"] == "POTENTIAL_RISK":
+                    high_severity_count += 1
 
     # Calculate Risk Score
     total = len(analyzed_clauses)
     risk_score = 0
+    
     if total > 0:
-        risk_score = int((risky_count / total) * 100)
-
+        base_score = (risky_count / total) * 100
+        
+        penalty = high_severity_count * 15
+        
+        risk_score = int(min(base_score + penalty, 100))
+        
+        if risky_count > 0 and risk_score < 45:
+            risk_score = 45
+    
     # Persistence Layer A: SQL
     db_record = AnalysisRecord(
         filename=file.filename,

@@ -1,98 +1,167 @@
 import torch
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
-import torch.nn.functional as F
+from transformers import pipeline
+import logging
+
+# -- LOGGER ---
+logger = logging.getLogger(__name__)
+
 
 class LegalNLPEngine:
 
     def __init__(self):
-        self.model_name = "nlpaueb/legal-bert-base-uncased"
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        
-        print(f"Loading NLP Model: {self.model_name} on {self.device}...")
-        
-        # 1. TOKENIZER: Converts text to numbers
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
-        
-        # 2. MODEL: The neural network
-        self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name, num_labels=2)
-        self.model.to(self.device)
-        self.model.eval() 
+        self.model_name = "recognai/zeroshot_selectra_medium"
+        self.device = 0 if torch.cuda.is_available() else -1
+
+        print(f"Loading NLP Model: {self.model_name} on device {self.device}...")
+
+        try:
+            self.classifier = pipeline(
+                "zero-shot-classification", model=self.model_name, device=self.device
+            )
+        except Exception as e:
+            logger.error(f"Error loading model: {e}")
+            self.classifier = None
 
     def analyze_clause(self, text: str):
-        if not text or len(text) < 10:
+        if not text or len(text) < 15:
             return None
 
-        # --- Rules heuristics ---
         text_lower = text.lower()
 
+        # --- LEVEL 1: RISK HEURISTIC  ---
         risky_keywords = [
-            "modificación unilateral", "exención total de responsabilidad",
-            "venta de datos", "renuncia a derechos", "demandas colectivas",
-            "arbitraje privado", "sin previo aviso", "no se hace responsable",
-            "derecho irrevocable", "renunciando a la jurisdicción",
-            "indemnización", "sin compensación", "datos a terceros"
-        ]
-        
-        safe_keywords = [
-            "horario", "jornada", "fecha", "nombre", "domicilio", 
-            "dni", "firmado", "en prueba", "convenio", "trabajador",
-            "vacaciones", "nómina", "seguridad social", "protección de datos",
-            "anexo", "contrato", "acuerdo", "estipulaciones", "cláusula", 
-            "firmando", "lugar y fecha", "reunidos"
+            # --- Bloque: Renuncias y Legal ---
+            "modificación unilateral", 
+            "modificar unilateralmente", 
+            "exención de responsabilidad",
+            "no se hace responsable",
+            "renuncia a derechos", 
+            "renuncia de forma expresa",
+            "renuncia expresa", 
+            "irrevocable",
+            "renuncia al fuero",
+            "renuncia a cualquier otro fuero",
+            "juzgados que designe la empresa",
+            "juzgados que libremente designe", # 
+            
+            # --- Bloque: Condiciones Laborales ---
+            "sin preaviso", 
+            "sin necesidad de causa",
+            "sin necesidad de alegar causa",
+            "sin derecho a compensación",
+            "sin compensación económica",
+            "no genera derecho",
+            "absorbe cualquier concepto",
+            "cualesquiera otras tareas", 
+            "no guarden relación directa", 
+            
+            # --- Bloque: Movilidad y Funciones ---
+            "movilidad geográfica", 
+            "traslado a cualquier",
+            "podrá trasladar",
+            "cambio de centro",
+            "funciones de distinta categoría",
+            "polivalencia funcional",
+            
+            # --- Bloque: Tiempo y Vacaciones ---
+            "jornada de hasta", 
+            "horas extraordinarias obligatorias",
+            "realización ilimitada",
+            "disponibilidad total",
+            "cancelar las vacaciones", 
+            "modificar las vacaciones",
+            "fraccionar las vacaciones",
+            "fijada exclusivamente por la empresa",
+            
+            # --- Bloque: Pagos ---
+            "cuando su tesorería", 
+            "retrasarlo hasta", 
+            "pago diferido",
+            "sin que ello genere intereses",
+            
+            # --- Bloque: Privacidad y Sanciones ---
+            "despido disciplinario inmediato", 
+            "comentarios privados",
+            "uso ilimitado de su imagen", 
+            "cesión de imagen",
+            "datos a terceros"
         ]
 
-        if any(k in text_lower for k in risky_keywords):
+        for keyword in risky_keywords:
+            if keyword in text_lower:
+                return {
+                    "text_snippet": text[:150] + "...",
+                    "label": "POTENTIAL_RISK",
+                    "confidence": 0.98,
+                    "is_risky": True,
+                }
+
+        # --- LEVEL 2: FILTER "ADMINISTRATIVE NOISE" ---
+
+        safe_keywords = [
+            "en madrid a",
+            "reunidos",
+            "con domicilio en",
+            "con dni",
+            "mayor de edad",
+            "intervienen",
+            "exponen",
+            "cláusulas:",
+            "firmado en",
+            "fdo.",
+            "el trabajador:",
+            "la empresa:",
+        ]
+
+        if any(sk in text_lower for sk in safe_keywords):
             return {
-                "text_snippet": text[:100] + "...",
-                "label": "POTENTIAL_RISK",
-                "confidence": 0.95,
-                "is_risky": True
-            }
-            
-        if any(k in text_lower for k in safe_keywords):
-            return {
-                "text_snippet": text[:100] + "...",
+                "text_snippet": text[:150] + "...",
                 "label": "ACCEPTABLE",
                 "confidence": 0.90,
-                "is_risky": False
+                "is_risky": False,
             }
 
-        # ---IA BERT ---
-        try:
-            # Tokenization
-            inputs = self.tokenizer(
-                text, 
-                return_tensors="pt", 
-                truncation=True, 
-                max_length=512,
-                padding=True
-            ).to(self.device)
+        # --- LEVEL 3: ARTIFICIAL INTELLIGENCE (Zero-Shot) ---
+        if self.classifier:
+            try:
+                candidate_labels = [
+                    "cláusula abusiva",
+                    "explotación laboral",
+                    "renuncia de derechos",
+                    "condición laboral estándar",
+                    "información administrativa",
+                ]
 
-            # Inference (Pass through the neural network)
-            with torch.no_grad():
-                outputs = self.model(**inputs)
-            
-            probs = F.softmax(outputs.logits, dim=1)
-            
-            risk_score = probs[0][1].item() 
-            
-            is_risky_ai = risk_score > 0.55 
+                result = self.classifier(text, candidate_labels)
+                top_label = result["labels"][0]
+                score = result["scores"][0]
 
-            return {
-                "text_snippet": text[:100] + "...",
-                "label": "AI_DETECTED_RISK" if is_risky_ai else "AI_CLEARED",
-                "confidence": round(float(max(probs[0])), 2),
-                "is_risky": is_risky_ai
-            }
+                risky_labels = [
+                    "cláusula abusiva",
+                    "explotación laboral",
+                    "renuncia de derechos",
+                ]
 
-        except Exception as e:
-            # Fallback 
-            return {
-                "text_snippet": text[:100] + "...",
-                "label": "NEUTRAL",
-                "confidence": 0.0,
-                "is_risky": False
-            }
+                is_risky_ai = top_label in risky_labels and score > 0.40
 
-# Singleton instance
+                return {
+                    "text_snippet": text[:150] + "...",
+                    "label": "AI_DETECTED_RISK" if is_risky_ai else "ACCEPTABLE",
+                    "confidence": round(score, 2),
+                    "is_risky": is_risky_ai,
+                }
+
+            except Exception as e:
+                logger.error(f"AI Inference error: {e}")
+
+        # Fallback
+        return {
+            "text_snippet": text[:100] + "...",
+            "label": "NEUTRAL",
+            "confidence": 0.0,
+            "is_risky": False,
+        }
+
+
+#  Singleton instance
 nlp_engine = LegalNLPEngine()

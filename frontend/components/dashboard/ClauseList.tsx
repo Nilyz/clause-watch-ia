@@ -9,6 +9,24 @@ interface ClauseListProps {
 }
 
 export default function ClauseList({ clauses, count, t }: ClauseListProps) {
+
+    // --- HELPER: Translate ---
+    const getLabelText = (backendLabel: string) => {
+        const label = backendLabel.toUpperCase();
+
+        switch (label) {
+            case "POTENTIAL_RISK":
+                return t.labelRisk; 
+            case "AI_DETECTED_RISK":
+                return t.labelAiRisk;
+            case "ACCEPTABLE":
+            case "AI_CLEARED":
+                return t.labelSafe; 
+            default:
+                return t.labelNeutral || label;
+        }
+    };
+
     return (
         <div className="bg-[#FDFFFF] border border-[#D2B68A]/40 rounded-2xl p-6 shadow-md animate-in fade-in slide-in-from-bottom-8">
             {/* HEADER */}
@@ -55,7 +73,8 @@ export default function ClauseList({ clauses, count, t }: ClauseListProps) {
                                     ) : (
                                         <CheckCircle className="w-3.5 h-3.5" />
                                     )}
-                                    {clause.label}
+                                    
+                                    {getLabelText(clause.label)}
                                 </h3>
                             </div>
 
