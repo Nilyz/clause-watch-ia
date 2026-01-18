@@ -1,31 +1,40 @@
 # ClauseWatch AI
-ClauseWatch AI is an intelligent contract analysis platform that leverages **Fine-Tuned Transformers (BERT)** for semantic risk detection and **Generative AI (RAG)** for deep legal explanation.
+ClauseWatch AI is an intelligent contract analysis platform specialized in **Spanish Labor Law**. It leverages a **Hybrid AI Architecture** combining heuristic linguistic patterns with **Zero-Shot Transformers** for high-precision risk detection, alongside **Generative AI** for deep legal explanation.
 
 ## Preview
 ![ClauseWatch Preview](./assets/preview.png "ClauseWatch Dashboard")
 
 ## About
-ClauseWatch AI modernizes the legal review process by transforming dense PDFs into actionable insights. Moving beyond simple "keyword search", ClauseWatch implements a **Multi-Model AI Architecture**. It deploys a specialized **Legal-BERT** model to detect nuanced risks (like "Unilateral Modification") that simple regex misses, while leveraging Large Language Models (LLMs) for complex reasoning and user Q&A.
+ClauseWatch AI modernizes the legal review process by transforming dense PDFs into actionable insights. Moving beyond simple keyword search, ClauseWatch implements a **Multi-Stage Analysis Pipeline**. It combines deterministic detection for known abusive clauses (based on the Spanish *"Estatuto de los Trabajadores"*) with a **Zero-Shot AI Model** to understand context and detect nuanced risks (like "Unilateral Modification" or "Rights Waiver") that rigid rules might miss.
 
 ### How it works
 1.  **Secure Ingestion** → The Backend (FastAPI) receives the PDF and performs a **Magic Bytes Verification** to prevent RCE attacks, ensuring file integrity before processing.
-2.  **Semantic Risk Detection (Layer 1)** → Instead of rigid rules, the system uses **`nlpaueb/legal-bert-base-uncased`**, a transformer model pre-trained on legal texts. This allows it to understand context and detect dangerous clauses even if the wording is obscure or complex.
-3.  **Vectorization (Layer 2)** → Text chunks are processed via **Google Embeddings API** to create semantic vectors, stored in an ephemeral in-memory vector store for privacy-focused sessions.
-4.  **RAG & Explanation (Layer 3)** → When a user queries a clause, the system retrieves relevant context and feeds it to **Google Gemini 2.5 Flash**, which acts as an expert lawyer to explain the implications in simple terms.
-5.  **Visualization** → Next.js renders risk scores and analysis cards in a responsive UI, offering real-time interaction with the document's data.
+2.  **Smart Parsing & Filtering** → A custom PDF processor cleans the document, intelligently removing headers, footers, signatures, and page numbers to isolate relevant legal text and avoid false positives.
+3.  **Hybrid Risk Detection (The Core)** →
+    * **Layer 1 (Heuristic):** Linguistic root matching detects high-probability abusive terms immediately (e.g., "renuncia fuero", "15 días vacaciones").
+    * **Layer 2 (Zero-Shot AI):** Ambiguous clauses are analyzed by **`recognai/zeroshot_selectra_medium`**, a Transformer model specialized in Spanish, to classify risks without needing labeled training data.
+4.  **Generative Explanation** → Detected risks are fed into **Google Gemini 2.5 Flash**, which acts as an expert lawyer to explain *why* a clause is dangerous and cite the relevant legal context.
+5.  **Ephemeral Visualization** → Results are rendered in a Next.js UI for real-time interaction.
+
+## 🔒 Privacy & Security (Zero-Data Retention)
+ClauseWatch AI is designed with a **"Privacy by Design"** architecture, making it suitable for confidential and sensitive legal documents.
+
+-   **Volatile Memory Storage:** The database runs entirely in **RAM (`sqlite:///:memory:`)**. No analysis data, filenames, or risk scores are ever written to the server's hard drive.
+-   **Ephemeral Sessions:** Once the analysis session ends or the container restarts, all data is cryptographically irretrievable—it simply ceases to exist.
+-   **No Third-Party Training:** We do not store your contracts to train future models. The Transformer model runs locally within the container, and Gemini is used strictly for inference with zero-retention settings.
 
 ## Features to highlight
--   **Deep Learning Powered:** Utilizes **PyTorch & Transformers** to run a specialized Legal-BERT model, offering superior accuracy over traditional keyword matching.
--   **Hybrid AI Strategy:** Combines a deterministic discriminative model (BERT) for classification with a generative model (Gemini) for explanation, optimizing for both precision and creativity.
--   **Containerized Architecture:** The backend is fully Dockerized to manage heavy ML dependencies (Torch, CUDA libraries) and deployed on **Hugging Face Spaces** for high-performance inference.
--   **Privacy by Design (Ephemeral):** Built for security. Files and vector indexes are processed in volatile memory and discarded after the session.
--   **RAG-Powered Chat:** Implements Retrieval-Augmented Generation to allow users to "chat" with their contract.
+-   **Zero-Shot Learning:** Utilizes **Hugging Face Pipelines** with the `selectra-medium` model to classify legal text on the fly, eliminating the need for extensive model training.
+-   **Spanish Legal Specialization:** Specifically tuned to detect abuses common in Spanish contracts (e.g., "modificación sustancial", "renuncia de derechos").
+-   **Hybrid Engine Strategy:** Combines the speed of heuristics with the semantic understanding of Transformers, optimizing for both low latency and high accuracy.
+-   **Containerized Architecture:** The backend is fully Dockerized, managing heavy ML dependencies (Torch, Transformers) and deployed on **Hugging Face Spaces**.
+-   **RAG-Powered Context:** Implements Retrieval-Augmented Generation concepts to ground AI explanations in the actual document text.
 
 ## Technologies
 ClauseWatch AI is built with:
--   **Core AI:** `PyTorch`, `Hugging Face Transformers` (Legal-BERT)
--   **GenAI:** `Google Gemini API` (LLM & Embeddings)
--   **Backend:** `Python`, `FastAPI`, `Docker`
+-   **Core AI:** `PyTorch`, `Hugging Face Transformers` (Zero-Shot Classification)
+-   **GenAI:** `Google Gemini API` (LLM for Explanations)
+-   **Backend:** `Python`, `FastAPI`, `SQLAlchemy`, `PyMuPDF`
 -   **Frontend:** `Next.js 14`, `TypeScript`, `Tailwind CSS`
 -   **Infrastructure:** `Vercel` (Frontend), `Hugging Face Spaces` (Backend Container)
 
@@ -39,7 +48,7 @@ Navigate to the backend folder, create a virtual environment, and install depend
 cd backend
 #-------- Option A: Local Python -------- 
 # Create .env file with your API Key
-# GENAI_API_KEY=your_google_api_key_here
+# API_KEY_GEMINI=your_google_api_key_here
 
 # Install dependencies (Warning: This installs PyTorch ~1GB)
 pip install -r requirements.txt
@@ -50,16 +59,11 @@ uvicorn main:app --reload
 #-------- Option B: Docker --------
 docker build -t clausewatch-api .
 docker run -p 7860:7860 --env-file .env clausewatch-api
-```
-
-### 2. Frontend Setup
-Open a new terminal, navigate to the frontend folder, and install Node dependencies:
-
 ```bash
 cd frontend
 
 # Create .env.local file
-# NEXT_PUBLIC_API_URL=[http://127.0.0.1:8000](http://127.0.0.1:8000) (or http://localhost:7860 if using Docker)
+# NEXT_PUBLIC_API_URL=[http://127.0.0.1:7860](http://127.0.0.1:7860)
 
 # Install and run
 npm install
